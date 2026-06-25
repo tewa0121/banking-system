@@ -13,9 +13,10 @@ const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
 const reportRoutes = require('./routes/reportRoutes');
-const interestRoutes = require('./routes/interestRoutes'); // ⭐ አክል
+const interestRoutes = require('./routes/interestRoutes');
 const languageRoutes = require('./routes/languageRoutes');
 const bankRoutes = require('./routes/bankRoutes');
+const settingsRoutes = require('./routes/settingsRoutes'); // ⭐ አክል
 
 const errorHandler = require('./middleware/errorHandler');
 
@@ -67,9 +68,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/interest', interestRoutes); // ⭐ አክል
+app.use('/api/interest', interestRoutes);
 app.use('/api/languages', languageRoutes);
 app.use('/api/banks', bankRoutes);
+app.use('/api/settings', settingsRoutes); // ⭐ አክል
+
 app.use(errorHandler);
 
 // ============================================

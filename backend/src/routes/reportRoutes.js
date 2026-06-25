@@ -1,10 +1,11 @@
 const router = require('express').Router();
 const reportController = require('../controllers/reportController');
-const { protect } = require('../middleware/auth');
+const { protect, adminOnly } = require('../middleware/auth');
 
-router.use(protect);
+// User routes - require authentication only
+router.get('/statement/:account_id', protect, reportController.getAccountStatement);
 
-// Get account statement
-router.get('/statement/:account_id', reportController.getAccountStatement);
+// Admin routes - require admin role
+router.get('/admin/transactions', protect, adminOnly, reportController.getAllTransactionsReport);
 
 module.exports = router;

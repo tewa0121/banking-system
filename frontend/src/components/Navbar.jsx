@@ -5,7 +5,6 @@ function Navbar() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const token = localStorage.getItem('token');
 
-    // ⭐ ይህን አክል - Navbar ሁልጊዜ እንዲታይ
     if (!token) {
         return null;
     }
@@ -23,9 +22,20 @@ function Navbar() {
                     <Link to="/transfer" style={styles.link}>Transfer</Link>
                     <Link to="/external-transfer" style={styles.link}>🏦 External</Link>
                     <Link to="/interest" style={styles.link}>Interest</Link>
+                    
+                    {/* ⭐ Reports - ለሁሉም ተጠቃሚዎች */}
+                    <Link to="/reports" style={styles.link}>📊 Reports</Link>
+                    
+                    {/* ⭐ Admin እና Settings - ለአስተዳዳሪ ብቻ */}
                     {user.role === 'admin' && (
-                        <Link to="/admin" style={styles.link}>Admin</Link>
+                        <>
+                            <Link to="/admin" style={{...styles.link, color: '#ffd700', fontWeight: 'bold'}}>
+                                👑 Admin
+                            </Link>
+                            <Link to="/settings" style={styles.link}>⚙️ Settings</Link>
+                        </>
                     )}
+                    
                     <Link to="/profile" style={styles.link}>👤 Profile</Link>
                     <LanguageSelector />
                 </div>

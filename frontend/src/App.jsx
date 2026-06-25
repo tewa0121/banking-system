@@ -12,6 +12,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
 import InterestCalculator from './pages/InterestCalculator';
 import ExternalTransfer from './pages/ExternalTransfer';
+import Reports from './pages/Reports'; // ⭐ አክል
+import Settings from './pages/Settings'; // ⭐ አክል
 
 function App() {
   return (
@@ -36,6 +38,8 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/interest" element={<InterestCalculator />} />
           <Route path="/external-transfer" element={<ExternalTransfer />} />
+          <Route path="/reports" element={<Reports />} /> {/* ⭐ አክል */}
+          <Route path="/settings" element={<Settings />} /> {/* ⭐ አክል */}
         </Routes>
       </div>
     </Router>
