@@ -26,6 +26,14 @@ const protect = async (req, res, next) => {
             });
         }
 
+        // ⭐ Check if user is active
+        if (user.status === 'inactive') {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account has been deactivated. Please contact admin.'
+            });
+        }
+
         req.user = user;
         next();
     } catch (error) {
@@ -36,7 +44,7 @@ const protect = async (req, res, next) => {
     }
 };
 
-// ⭐ Admin middleware - ይህን አክል
+// ⭐ Admin middleware
 const adminOnly = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
         next();

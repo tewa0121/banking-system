@@ -21,6 +21,7 @@ exports.getProfile = async (req, res) => {
                     phone: user.phone,
                     address: user.address,
                     role: user.role,
+                    profile_image: user.profile_image || null,
                     created_at: user.created_at
                 },
                 account: account
@@ -45,7 +46,6 @@ exports.updateProfile = async (req, res) => {
         const { full_name, phone, address } = req.body;
 
         console.log('📥 Update profile for user:', user.id);
-        console.log('📥 Data:', { full_name, phone, address });
 
         const { pool } = require('../config/database');
         const query = `
@@ -81,10 +81,6 @@ exports.changePassword = async (req, res) => {
         const user = req.user;
         const { current_password, new_password } = req.body;
 
-        console.log('📥 Change password request for user:', user.id);
-        console.log('📥 Body:', { current_password: '***', new_password: '***' });
-
-        // Check if passwords are provided
         if (!current_password || !new_password) {
             return res.status(400).json({
                 success: false,
@@ -92,7 +88,6 @@ exports.changePassword = async (req, res) => {
             });
         }
 
-        // Check password length
         if (new_password.length < 6) {
             return res.status(400).json({
                 success: false,
@@ -100,14 +95,11 @@ exports.changePassword = async (req, res) => {
             });
         }
 
-        // Get full user with password_hash from database
         const { pool } = require('../config/database');
         const [users] = await pool.execute(
             'SELECT * FROM users WHERE id = ?',
             [user.id]
         );
-        
-        console.log('📥 User found:', users.length > 0 ? 'Yes' : 'No');
         
         if (users.length === 0) {
             return res.status(404).json({
@@ -117,20 +109,7 @@ exports.changePassword = async (req, res) => {
         }
 
         const fullUser = users[0];
-        console.log('📥 Has password_hash:', fullUser.password_hash ? 'Yes' : 'No');
-
-        // Verify current password using bcrypt
-        let isMatch = false;
-        try {
-            isMatch = await bcrypt.compare(current_password, fullUser.password_hash);
-            console.log('📥 Password match:', isMatch ? 'Yes' : 'No');
-        } catch (compareError) {
-            console.error('❌ bcrypt.compare error:', compareError);
-            return res.status(500).json({
-                success: false,
-                message: 'Error verifying password'
-            });
-        }
+        const isMatch = await bcrypt.compare(current_password, fullUser.password_hash);
         
         if (!isMatch) {
             return res.status(400).json({
@@ -139,29 +118,76 @@ exports.changePassword = async (req, res) => {
             });
         }
 
-        // Hash new password
         const salt = await bcrypt.genSalt(10);
         const newPasswordHash = await bcrypt.hash(new_password, salt);
-        console.log('📥 New password hashed successfully');
 
-        // Update password in database
         await pool.execute(
             'UPDATE users SET password_hash = ? WHERE id = ?',
             [newPasswordHash, user.id]
         );
-        console.log('✅ Password updated successfully');
 
         res.status(200).json({
             success: true,
             message: 'Password changed successfully'
         });
-
     } catch (error) {
         console.error('❌ Change password error:', error);
-        console.error('❌ Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Failed to change password',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// ⭐ Upload Profile Image
+// ============================================
+exports.uploadProfileImage = async (req, res) => {
+    try {
+        const user = req.user;
+        const { profile_image } = req.body;
+
+        console.log('📥 Upload profile image for user:', user.id);
+        console.log('📥 Image received:', profile_image ? 'YES' : 'NO');
+
+        if (!profile_image) {
+            return res.status(400).json({
+                success: false,
+                message: 'Profile image is required'
+            });
+        }
+
+        const { pool } = require('../config/database');
+
+        // Update the user's profile image
+        const query = 'UPDATE users SET profile_image = ? WHERE id = ?';
+        console.log('📥 Executing update for user:', user.id);
+        
+        const [result] = await pool.execute(query, [profile_image, user.id]);
+        console.log('📥 Update result:', result);
+
+        // Get the updated user
+        const [rows] = await pool.execute(
+            'SELECT profile_image FROM users WHERE id = ?',
+            [user.id]
+        );
+
+        console.log('✅ Profile image updated successfully');
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile image uploaded successfully',
+            data: {
+                profile_image: rows[0]?.profile_image || null
+            }
+        });
+    } catch (error) {
+        console.error('❌ Upload profile image error:', error);
+        console.error('❌ Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to upload profile image',
             error: error.message
         });
     }

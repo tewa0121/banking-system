@@ -13,6 +13,7 @@ router.get('/stats', adminController.getDashboardStats);
 router.get('/users', adminController.getAllUsers);
 router.get('/users/:id', adminController.getUserById);
 router.put('/users/:id/role', adminController.updateUserRole);
+router.put('/users/:id/status', adminController.updateUserStatus); // ⭐ አክል
 
 // Accounts
 router.get('/accounts', adminController.getAllAccounts);

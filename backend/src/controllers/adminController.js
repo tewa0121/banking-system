@@ -157,7 +157,52 @@ exports.updateUserRole = async (req, res) => {
 };
 
 // ============================================
+// ⭐ Update User Status (Active/Inactive)
+// ============================================
+exports.updateUserStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
 
+        console.log('📥 Update user status:', { id, status });
+
+        if (!['active', 'inactive'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status. Must be active or inactive'
+            });
+        }
+
+        const { pool } = require('../config/database');
+        const query = 'UPDATE users SET status = ? WHERE id = ?';
+        const [result] = await pool.execute(query, [status, id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const user = await User.findById(id);
+
+        res.status(200).json({
+            success: true,
+            message: `User status updated to ${status}`,
+            data: user
+        });
+    } catch (error) {
+        console.error('❌ Update user status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update user status',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// Get Dashboard Statistics
 // ============================================
 exports.getDashboardStats = async (req, res) => {
     try {

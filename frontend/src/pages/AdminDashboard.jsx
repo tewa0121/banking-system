@@ -46,6 +46,24 @@ function AdminDashboard() {
         }
     };
 
+    // ⭐ Update user status (Active/Inactive)
+    const handleStatusToggle = async (userId, currentStatus) => {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        
+        try {
+            const response = await api.put(`/admin/users/${userId}/status`, {
+                status: newStatus
+            });
+            
+            if (response.data.success) {
+                toast.success(`User status updated to ${newStatus}`);
+                fetchDashboardData();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update status');
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -119,6 +137,8 @@ function AdminDashboard() {
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
+                                <th>Status</th>
+                                <th>Action</th>
                                 <th>Joined</th>
                             </tr>
                         </thead>
@@ -132,6 +152,19 @@ function AdminDashboard() {
                                         <span style={user.role === 'admin' ? styles.adminBadge : styles.userBadge}>
                                             {user.role}
                                         </span>
+                                    </td>
+                                    <td>
+                                        <span style={user.status === 'active' ? styles.activeBadge : styles.inactiveBadge}>
+                                            {user.status || 'active'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button
+                                            onClick={() => handleStatusToggle(user.id, user.status || 'active')}
+                                            style={user.status === 'active' ? styles.deactivateButton : styles.activateButton}
+                                        >
+                                            {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                                        </button>
                                     </td>
                                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                                 </tr>
@@ -287,6 +320,38 @@ const styles = {
         color: 'white',
         padding: '3px 8px',
         borderRadius: '4px',
+        fontSize: '12px'
+    },
+    activeBadge: {
+        backgroundColor: '#28a745',
+        color: 'white',
+        padding: '3px 8px',
+        borderRadius: '4px',
+        fontSize: '12px'
+    },
+    inactiveBadge: {
+        backgroundColor: '#dc3545',
+        color: 'white',
+        padding: '3px 8px',
+        borderRadius: '4px',
+        fontSize: '12px'
+    },
+    deactivateButton: {
+        padding: '5px 12px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '12px'
+    },
+    activateButton: {
+        padding: '5px 12px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
         fontSize: '12px'
     },
     depositText: {

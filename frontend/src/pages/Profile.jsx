@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../api/axiosConfig';
 
 function Profile() {
     const navigate = useNavigate();
+    const fileInputRef = useRef(null);
     const [profile, setProfile] = useState(null);
     const [formData, setFormData] = useState({
         full_name: '',
@@ -15,7 +16,8 @@ function Profile() {
         current_password: '',
         new_password: ''
     });
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -39,8 +41,6 @@ function Profile() {
             }
         } catch (error) {
             toast.error('Failed to fetch profile');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -92,13 +92,133 @@ function Profile() {
         }
     };
 
-    if (loading) {
-        return <div style={styles.loading}>Loading...</div>;
-    }
+    // ⭐ Profile Image Upload with better error handling
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            toast.error('No file selected');
+            return;
+        }
+
+        console.log('📤 File selected:', {
+            name: file.name,
+            type: file.type,
+            size: file.size
+        });
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+
+        // Check file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Image size must be less than 2MB');
+            return;
+        }
+
+        setUploading(true);
+        const loadingToast = toast.loading('Uploading image...');
+
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            
+            reader.onload = async () => {
+                try {
+                    const base64Image = reader.result;
+                    console.log('📤 Image encoded, length:', base64Image.length);
+                    
+                    const response = await api.put('/users/profile-image', {
+                        profile_image: base64Image
+                    });
+                    
+                    console.log('📥 Response:', response.data);
+                    
+                    if (response.data.success) {
+                        toast.update(loadingToast, {
+                            render: 'Profile image uploaded successfully!',
+                            type: 'success',
+                            isLoading: false,
+                            autoClose: 3000
+                        });
+                        fetchProfile();
+                    } else {
+                        toast.update(loadingToast, {
+                            render: response.data.message || 'Upload failed',
+                            type: 'error',
+                            isLoading: false,
+                            autoClose: 3000
+                        });
+                    }
+                } catch (err) {
+                    console.error('❌ Upload error:', err);
+                    console.error('❌ Error response:', err.response?.data);
+                    toast.update(loadingToast, {
+                        render: err.response?.data?.message || 'Failed to upload image',
+                        type: 'error',
+                        isLoading: false,
+                        autoClose: 3000
+                    });
+                }
+            };
+            
+            reader.onerror = (error) => {
+                console.error('❌ FileReader error:', error);
+                toast.update(loadingToast, {
+                    render: 'Failed to read image file',
+                    type: 'error',
+                    isLoading: false,
+                    autoClose: 3000
+                });
+            };
+        } catch (error) {
+            console.error('❌ Upload error:', error);
+            toast.error('Failed to upload image');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current.click();
+    };
 
     return (
         <div style={styles.container}>
             <h2 style={styles.title}>My Profile</h2>
+
+            {/* ⭐ Profile Image Section */}
+            <div style={styles.imageSection}>
+                <div style={styles.imageContainer}>
+                    {profile?.user?.profile_image ? (
+                        <img 
+                            src={profile.user.profile_image} 
+                            alt="Profile" 
+                            style={styles.profileImage}
+                        />
+                    ) : (
+                        <div style={styles.placeholderImage}>
+                            <span style={styles.placeholderText}>📷</span>
+                        </div>
+                    )}
+                </div>
+                <button 
+                    onClick={triggerFileInput} 
+                    style={styles.uploadButton}
+                    disabled={uploading}
+                >
+                    {uploading ? 'Uploading...' : 'Upload Photo'}
+                </button>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                    style={styles.hiddenInput}
+                />
+            </div>
 
             {profile && (
                 <div style={styles.card}>
@@ -191,7 +311,55 @@ const styles = {
     },
     title: {
         marginBottom: '20px',
-        color: '#333'
+        color: '#333',
+        textAlign: 'center'
+    },
+    imageSection: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        marginBottom: '20px'
+    },
+    imageContainer: {
+        width: '120px',
+        height: '120px',
+        borderRadius: '50%',
+        overflow: 'hidden',
+        border: '3px solid #1976d2',
+        marginBottom: '10px',
+        backgroundColor: '#f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    profileImage: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover'
+    },
+    placeholderImage: {
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '40px',
+        color: '#999'
+    },
+    placeholderText: {
+        fontSize: '50px'
+    },
+    uploadButton: {
+        padding: '8px 20px',
+        backgroundColor: '#1976d2',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '14px'
+    },
+    hiddenInput: {
+        display: 'none'
     },
     card: {
         backgroundColor: 'white',

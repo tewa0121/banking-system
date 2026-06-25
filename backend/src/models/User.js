@@ -14,15 +14,15 @@ class User {
             const password_hash = await bcrypt.hash(password, salt);
 
             const query = `
-                INSERT INTO users (full_name, email, password_hash, phone, address, role)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO users (full_name, email, password_hash, phone, address, role, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `;
             
             console.log('🔍 SQL:', query);
             
-            // ⭐ pool ን ተጠቀም
+            // ⭐ pool ን ተጠቀም - status ን 'active' አድርገን እናስገባለን
             const [result] = await pool.execute(query, [
-                full_name, email, password_hash, phone, address, role
+                full_name, email, password_hash, phone, address, role, 'active'
             ]);
             
             console.log('✅ User created with ID:', result.insertId);
@@ -48,9 +48,10 @@ class User {
         }
     }
 
+    // ⭐ findById - ፕሮፋይል ፎቶ እና status ያካትታል
     static async findById(id) {
         try {
-            const query = 'SELECT id, full_name, email, phone, address, role, created_at FROM users WHERE id = ?';
+            const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users WHERE id = ?';
             const [rows] = await pool.execute(query, [id]);
             return rows[0] || null;
         } catch (error) {
@@ -61,6 +62,30 @@ class User {
 
     static async comparePassword(plainPassword, hashedPassword) {
         return await bcrypt.compare(plainPassword, hashedPassword);
+    }
+
+    // ⭐ findAll - ፕሮፋይል ፎቶ እና status ያካትታል
+    static async findAll() {
+        try {
+            const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users ORDER BY created_at DESC';
+            const [rows] = await pool.execute(query);
+            return rows;
+        } catch (error) {
+            console.error('User.findAll error:', error.message);
+            return [];
+        }
+    }
+
+    // ⭐ ተጠቃሚዎችን በstatus ማጣራት
+    static async findByStatus(status) {
+        try {
+            const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users WHERE status = ? ORDER BY created_at DESC';
+            const [rows] = await pool.execute(query, [status]);
+            return rows;
+        } catch (error) {
+            console.error('User.findByStatus error:', error.message);
+            return [];
+        }
     }
 }
 
