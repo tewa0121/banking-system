@@ -10,16 +10,51 @@ function Login() {
         password: ''
     });
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
+
+    // ⭐ ኢሜይል ማረጋገጫ (Email Validation)
+    const validateEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
 
     const handleChange = (e) => {
+        const { name, value } = e.target;
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [name]: value
         });
+        
+        // ⭐ ስህተቶችን አጥፋ
+        if (errors[name]) {
+            setErrors({
+                ...errors,
+                [name]: ''
+            });
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // ⭐ የፎርም ማረጋገጫ (Form Validation)
+        const newErrors = {};
+        
+        if (!formData.email) {
+            newErrors.email = 'Email is required';
+        } else if (!validateEmail(formData.email)) {
+            newErrors.email = 'Please enter a valid email address (e.g., name@example.com)';
+        }
+        
+        if (!formData.password) {
+            newErrors.password = 'Password is required';
+        }
+        
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -50,10 +85,18 @@ function Login() {
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            style={styles.input}
+                            style={{
+                                ...styles.input,
+                                borderColor: errors.email ? '#dc3545' : '#ddd'
+                            }}
+                            placeholder="Enter your email"
                             required
                         />
+                        {errors.email && (
+                            <span style={styles.errorText}>{errors.email}</span>
+                        )}
                     </div>
+                    
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>Password</label>
                         <input
@@ -61,10 +104,18 @@ function Login() {
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            style={styles.input}
+                            style={{
+                                ...styles.input,
+                                borderColor: errors.password ? '#dc3545' : '#ddd'
+                            }}
+                            placeholder="Enter your password"
                             required
                         />
+                        {errors.password && (
+                            <span style={styles.errorText}>{errors.password}</span>
+                        )}
                     </div>
+                    
                     <button type="submit" style={styles.button} disabled={loading}>
                         {loading ? 'Loading...' : 'Login'}
                     </button>
@@ -117,7 +168,8 @@ const styles = {
         padding: '10px',
         border: '1px solid #ddd',
         borderRadius: '4px',
-        fontSize: '16px'
+        fontSize: '16px',
+        transition: 'border-color 0.3s'
     },
     button: {
         padding: '12px',
@@ -137,6 +189,11 @@ const styles = {
     link: {
         color: '#1976d2',
         textDecoration: 'none'
+    },
+    errorText: {
+        color: '#dc3545',
+        fontSize: '13px',
+        marginTop: '3px'
     }
 };
 

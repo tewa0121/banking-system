@@ -1,17 +1,12 @@
-const router = require('express').Router();
-const { protect, adminOnly } = require('../middleware/auth');
 const interestService = require('../services/interestService');
+const { adminOnly } = require('../middleware/auth');
 
 // ============================================
-// Calculate interest for an account
+// ለአንድ አካውንት ወለድ አስላ
 // ============================================
-router.get('/calculate/:accountId', protect, async (req, res) => {
+exports.calculateInterest = async (req, res) => {
     try {
         const { accountId } = req.params;
-        
-        console.log(`📥 Interest calculation request for account: ${accountId}`);
-        
-        // ⭐ ትክክለኛውን ተግባር ተጠቀም
         const result = await interestService.calculateInterestForAccount(accountId);
         
         if (!result.success) {
@@ -22,42 +17,29 @@ router.get('/calculate/:accountId', protect, async (req, res) => {
             success: true,
             data: result.data
         });
-        
     } catch (error) {
-        console.error('❌ Interest calculation route error:', error);
+        console.error('Calculate interest error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to calculate interest',
             error: error.message
         });
     }
-});
+};
 
 // ============================================
-// Get interest rate information
+// ወርሃዊ ወለድ በእጅ አስኬድ (Admin ብቻ)
 // ============================================
-router.get('/info', protect, async (req, res) => {
+exports.runMonthlyInterest = async (req, res) => {
     try {
-        const info = interestService.getInterestRateInfo();
-        res.status(200).json({
-            success: true,
-            data: info
-        });
-    } catch (error) {
-        console.error('❌ Get interest info error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get interest information',
-            error: error.message
-        });
-    }
-});
-
-// ============================================
-// ⭐ Run monthly interest manually (Admin only)
-// ============================================
-router.post('/run-monthly', protect, adminOnly, async (req, res) => {
-    try {
+        // Admin only check
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Admin access required'
+            });
+        }
+        
         const result = await interestService.runMonthlyInterestJob();
         
         if (!result.success) {
@@ -74,13 +56,31 @@ router.post('/run-monthly', protect, adminOnly, async (req, res) => {
             data: result
         });
     } catch (error) {
-        console.error('❌ Run monthly interest error:', error);
+        console.error('Run monthly interest error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to run monthly interest',
             error: error.message
         });
     }
-});
+};
 
-module.exports = router;
+// ============================================
+// የወለድ መጠን መረጃ ማግኘት
+// ============================================
+exports.getInterestRate = async (req, res) => {
+    try {
+        const info = interestService.getInterestRateInfo();
+        res.status(200).json({
+            success: true,
+            data: info
+        });
+    } catch (error) {
+        console.error('Get interest rate error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get interest rate info',
+            error: error.message
+        });
+    }
+};

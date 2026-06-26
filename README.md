@@ -1,134 +1,87 @@
-# 🏦 Banking System - Complete Documentation
+🏦 Banking System - Full Stack Application
+A complete, production-ready banking system built with React.js, Node.js, Express, and MySQL. Features include user authentication, account management, deposits, withdrawals, transfers, external bank transfers, transaction history, interest calculator, admin dashboard, multi-language support, dark mode, notifications, and more.
 
-The Banking System is a full-stack web application developed to automate and manage core banking operations within a financial institution. The system helps administrators efficiently handle customer accounts, transactions, fund transfers, interest calculations, and user management.
+📋 Table of Contents
+Features
 
-The application ensures secure authentication using JWT tokens, role-based access control (Admin/Customer), and provides a seamless user experience for managing deposits, withdrawals, transfers, and account information. Customers can view their transaction history, calculate interest on savings accounts, and transfer funds to both internal and external bank accounts.
+Tech Stack
 
----
+Project Structure
 
-## ✨ Features
+Installation
 
-### 👤 Customer Features
-- **Secure Login Authentication** with JWT
-- **User Registration** with account creation
-- **Profile Management** (View and Update)
-- **Password Change** functionality
-- **Deposit** money to account
-- **Withdraw** money from account
-- **Transfer** funds to other accounts
-- **External Transfer** to other banks
-- **Transaction History** with filters
-- **Interest Calculator** for savings accounts (5% annual)
-- **Multi-language Support** (English, Amharic, Oromoo, Tigrigna, Somali)
+API Documentation
 
-### 👑 Administrator Features
-- **Secure Login Authentication** with JWT
-- **Dashboard** with System Statistics
-- **User Management** (View all users)
-- **Account Management** (View all accounts)
-- **Transaction Monitoring** (View all transactions)
-- **Role Management** (Customer/Admin)
-- **Interest Rate Configuration** (5% default)
+Database Schema
 
----
+Environment Variables
 
-## 🛠️ Technology Stack
+Screenshots
 
-### Frontend
-| Technology | Purpose |
-|------------|---------|
-| **React.js** | UI Framework |
-| **React Router v6** | Navigation and Routing |
-| **Axios** | HTTP Client for API Calls |
-| **React Toastify** | Notifications and Alerts |
-| **CSS3** | Custom Styling |
+Contributing
 
-### Backend
-| Technology | Purpose |
-|------------|---------|
-| **Node.js** | Runtime Environment |
-| **Express.js** | Web Framework |
-| **JWT** | Authentication and Authorization |
-| **bcryptjs** | Password Hashing |
-| **MySQL2** | Database Driver |
-| **Nodemon** | Development Auto-restart |
+License
 
-### Database
-| Technology | Purpose |
-|------------|---------|
-| **MySQL** | Relational Database |
-| **MAMP** | Local Development Server |
+✨ Features
+👤 User Features
+Feature	Description
+🔐 Authentication	Secure registration and login with JWT
+👤 Profile Management	View and update profile with photo upload
+🔑 Password Management	Change password securely
+💰 Deposit	Add money to your account
+💳 Withdraw	Withdraw money from your account
+💸 Transfer	Send money to other accounts
+🏦 External Transfer	Transfer to other banks (CBE, Awash, Dashen, etc.)
+📈 Interest Calculator	Calculate monthly and yearly interest (5% annual)
+📊 Transaction History	View all your transactions with filters
+🌍 Multi-language	English, Amharic, Oromoo, Tigrigna, Somali
+🌙 Dark Mode	Toggle between light and dark themes
+🔔 Notifications	Real-time in-app notifications
+📱 Responsive	Works on all devices
+👑 Admin Features
+Feature	Description
+📊 Admin Dashboard	View system statistics
+👥 User Management	View, activate/deactivate users
+📋 Account Management	View all accounts
+📝 Transaction Monitoring	View all transactions
+⚙️ System Settings	Configure interest rate, currency, maintenance mode
+📊 Reports	Generate account statements and reports
+🔍 Search	Search users, accounts, and transactions
+🔒 Security Features
+✅ JWT Authentication
 
----
+✅ Password Hashing (bcrypt)
 
-## 📊 System Modules
+✅ Role-based Access Control (Admin/Customer)
 
-| Module | Description |
-|--------|-------------|
-| **Authentication Module** | User registration, login, JWT token generation, and role-based access control |
-| **Account Management Module** | Create and manage customer accounts with unique account numbers |
-| **Transaction Module** | Handle deposits, withdrawals, transfers, and transaction history |
-| **Interest Module** | Calculate monthly and yearly interest on savings accounts |
-| **External Transfer Module** | Transfer funds to other banks (CBE, Awash, Dashen, etc.) |
-| **Admin Dashboard Module** | View system statistics and manage users, accounts, and transactions |
-| **User Profile Module** | Manage user profiles and change passwords |
-| **Multi-language Module** | Support for multiple languages (English, Amharic, Oromoo, Tigrigna, Somali) |
-| **Reporting Module** | Transaction summaries and account statements |
+✅ Input Validation
 
----
+✅ Helmet for Security Headers
 
-## 🗄️ Database Schema
+✅ CORS Configuration
 
-### Tables
+✅ Rate Limiting
 
-| Table | Description |
-|-------|-------------|
-| **users** | Stores user information (name, email, password_hash, role) |
-| **accounts** | Stores account details (account_number, balance, type, status) |
-| **transactions** | Stores all transaction records (type, amount, description, status) |
-| **transfers** | Stores transfer records (from_account, to_account, fee) |
-| **audit_logs** | Tracks system activities and user actions |
+✅ Audit Logs
 
-### Account Types
-| Type | Description |
-|------|-------------|
-| **Savings** | Interest-earning accounts (5% annual) |
-| **Checking** | Daily transaction accounts |
-| **Fixed** | Fixed deposit accounts |
+🛠️ Tech Stack
+Frontend
+Technology	Version	Purpose
+React.js	18.2.0	UI Framework
+React Router	v6.15.0	Navigation
+Axios	1.5.0	HTTP Client
+React Toastify	9.1.3	Notifications
+CSS3	-	Styling
+Backend
+Technology	Version	Purpose
+Node.js	18+	Runtime Environment
+Express.js	4.18.2	Web Framework
+MySQL	8.0	Database
+JWT	9.0.2	Authentication
+Bcryptjs	2.4.3	Password Hashing
+Nodemon	3.0.1	Development
+Database
+MySQL (MAMP)
 
-### Transaction Types
-| Type | Description |
-|------|-------------|
-| **Deposit** | Adding money to account |
-| **Withdraw** | Removing money from account |
-| **Transfer** | Sending money to another account |
-| **Payment** | Making payments |
-
----
-
-## 🌍 Supported Banks (External Transfer)
-
-| Code | Bank Name |
-|------|-----------|
-| **CBE** | Commercial Bank of Ethiopia |
-| **AWASH** | Awash Bank |
-| **DASHEN** | Dashen Bank |
-| **WEGAGEN** | Wegagen Bank |
-| **UNITED** | United Bank |
-| **NIB** | Nib International Bank |
-| **ZEMEN** | Zemen Bank |
-| **OROMIA** | Oromia Bank |
-| **BUNA** | Buna Bank |
-| **ABAY** | Abay Bank |
-| **ADDIS** | Addis International Bank |
-| **SHABELLE** | Shabelle Bank |
-
----
-
-## 🚀 Installation Guide
-
-### Prerequisites
-- Node.js (v16 or higher)
-- MySQL (MAMP)
-- npm or yarn
+7 Tables: users, accounts, transactions, transfers, audit_logs, notifications, settings
 

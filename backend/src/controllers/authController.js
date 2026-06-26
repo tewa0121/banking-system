@@ -1,5 +1,6 @@
 const { User, Account } = require('../models');
 const jwt = require('jsonwebtoken');
+const { createNotification } = require('./notificationController');
 
 const generateToken = (user) => {
     return jwt.sign(
@@ -9,6 +10,9 @@ const generateToken = (user) => {
     );
 };
 
+// ============================================
+// Register - ምዝገባ
+// ============================================
 exports.register = async (req, res) => {
     try {
         const { full_name, email, password, phone, address } = req.body;
@@ -30,8 +34,15 @@ exports.register = async (req, res) => {
         });
 
         const account = await Account.create(user.id);
-
         const token = generateToken(user);
+
+        // ⭐ Welcome notification for new user
+        await createNotification(
+            user.id,
+            '🎉 Welcome to Banking System!',
+            `Welcome ${full_name}! Your account has been created successfully. Account number: ${account.account_number}`,
+            'success'
+        );
 
         res.status(201).json({
             success: true,
@@ -55,20 +66,50 @@ exports.register = async (req, res) => {
     }
 };
 
+// ============================================
+// Login - መግቢያ
+// ============================================
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
         const user = await User.findByEmail(email);
         if (!user) {
+            // ⭐ Failed login notification for security
+            await createNotification(
+                1, // Admin user ID (change this to your admin ID)
+                '⚠️ Failed Login Attempt',
+                `Failed login attempt for email: ${email}`,
+                'error'
+            );
             return res.status(401).json({
                 success: false,
                 message: 'Invalid email or password'
             });
         }
 
+        // Check if user is inactive
+        if (user.status === 'inactive') {
+            await createNotification(
+                user.id,
+                '⛔ Account Deactivated',
+                'Your account has been deactivated. Please contact admin for assistance.',
+                'error'
+            );
+            return res.status(403).json({
+                success: false,
+                message: 'Your account has been deactivated. Please contact admin.'
+            });
+        }
+
         const isMatch = await User.comparePassword(password, user.password_hash);
         if (!isMatch) {
+            await createNotification(
+                user.id,
+                '⚠️ Failed Login Attempt',
+                'Someone attempted to login to your account with incorrect password.',
+                'warning'
+            );
             return res.status(401).json({
                 success: false,
                 message: 'Invalid email or password'
@@ -77,6 +118,14 @@ exports.login = async (req, res) => {
 
         const account = await Account.findByUserId(user.id);
         const token = generateToken(user);
+
+        // ⭐ Successful login notification
+        await createNotification(
+            user.id,
+            '✅ Login Successful',
+            `You have successfully logged in to your account.`,
+            'success'
+        );
 
         res.json({
             success: true,
@@ -99,6 +148,9 @@ exports.login = async (req, res) => {
     }
 };
 
+// ============================================
+// Get Current User
+// ============================================
 exports.getMe = async (req, res) => {
     try {
         const user = req.user;

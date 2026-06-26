@@ -1,4 +1,5 @@
 const { User, Account, Transaction } = require('../models');
+const { createNotification } = require('./notificationController');
 
 // ============================================
 // Get All Users
@@ -85,7 +86,6 @@ exports.getAllTransactions = async (req, res) => {
     try {
         const { limit = 100 } = req.query;
         
-        // Get all transactions with account and user info
         const query = `
             SELECT t.*, a.account_number, u.full_name, u.email
             FROM transactions t
@@ -186,6 +186,23 @@ exports.updateUserStatus = async (req, res) => {
 
         const user = await User.findById(id);
 
+        // ⭐ Create notification for user about status change
+        if (status === 'active') {
+            await createNotification(
+                user.id,
+                '✅ Account Activated',
+                `Your account has been activated. You can now login and use all banking services.`,
+                'success'
+            );
+        } else {
+            await createNotification(
+                user.id,
+                '⛔ Account Deactivated',
+                `Your account has been deactivated. Please contact admin for more information.`,
+                'error'
+            );
+        }
+
         res.status(200).json({
             success: true,
             message: `User status updated to ${status}`,
@@ -208,19 +225,11 @@ exports.getDashboardStats = async (req, res) => {
     try {
         const { pool } = require('../config/database');
         
-        // Total users
         const [userCount] = await pool.execute('SELECT COUNT(*) as total FROM users');
-        
-        // Total accounts
         const [accountCount] = await pool.execute('SELECT COUNT(*) as total FROM accounts');
-        
-        // Total transactions
         const [transactionCount] = await pool.execute('SELECT COUNT(*) as total FROM transactions');
-        
-        // Total balance
         const [totalBalance] = await pool.execute('SELECT SUM(balance) as total FROM accounts');
         
-        // Recent transactions
         const [recentTransactions] = await pool.execute(`
             SELECT t.*, a.account_number, u.full_name
             FROM transactions t

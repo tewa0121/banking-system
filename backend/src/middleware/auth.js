@@ -34,6 +34,20 @@ const protect = async (req, res, next) => {
             });
         }
 
+        // ⭐ Check if system is in maintenance mode
+        const { pool } = require('../config/database');
+        const [settings] = await pool.execute('SELECT maintenance_mode FROM settings LIMIT 1');
+        
+        if (settings.length > 0 && settings[0].maintenance_mode === 1) {
+            // Allow admin to login during maintenance
+            if (user.role !== 'admin') {
+                return res.status(503).json({
+                    success: false,
+                    message: 'System is currently under maintenance. Please try again later.'
+                });
+            }
+        }
+
         req.user = user;
         next();
     } catch (error) {

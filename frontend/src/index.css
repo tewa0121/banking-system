@@ -1,15 +1,76 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ============================================
+   ⭐ NAVBAR HOVER EFFECTS - የተረጋገጠ
+   ============================================ */
+
+/* ሁሉም አገናኞች - Dashboard, Deposit, Withdraw, Transfer, External, Interest, Reports, Profile, Settings */
+.nav-link {
+    color: white !important;
+    text-decoration: none !important;
+    padding: 8px 14px !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    transition: all 0.3s ease !important;
+    display: inline-block !important;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffd700 !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+    border-radius: 6px !important;
 }
 
-button {
-  cursor: pointer;
+/* ⭐ ለአስተዳዳሪ ልዩ ሆቨር */
+.nav-admin {
+    color: #ffd700 !important;
+    text-decoration: none !important;
+    padding: 8px 14px !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+    background-color: rgba(255, 215, 0, 0.1) !important;
+    border: 1px solid rgba(255, 215, 0, 0.2) !important;
+    transition: all 0.3s ease !important;
+    display: inline-block !important;
+}
+
+.nav-admin:hover {
+    background-color: rgba(255, 215, 0, 0.3) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4) !important;
+    border-color: #ffd700 !important;
+}
+
+/* ⭐ ሎጎ ሆቨር */
+.nav-logo {
+    color: white !important;
+    text-decoration: none !important;
+    font-size: 20px !important;
+    font-weight: bold !important;
+    transition: all 0.3s ease !important;
+    display: inline-block !important;
+}
+
+.nav-logo:hover {
+    color: #ffd700 !important;
+    transform: scale(1.05) !important;
+}
+
+/* ⭐ አዶዎች (Notification, Theme, Language) */
+.nav-icon {
+    display: inline-block !important;
+    transition: all 0.3s ease !important;
+}
+
+.nav-icon:hover {
+    transform: scale(1.1) !important;
+    opacity: 0.8 !important;
+}
+
+/* ⭐ የአገናኞች ገቢር ሁኔታ (Active) */
+.nav-link.active {
+    background-color: rgba(255, 215, 0, 0.15) !important;
+    color: #ffd700 !important;
+    border-bottom: 2px solid #ffd700 !important;
 }

@@ -1,8 +1,20 @@
-// require("dotenv").config();
+require('dotenv').config();
 
-// module.exports = {
-//   INTEREST_RATE: parseFloat(process.env.INTEREST_RATE) || 0.05,
-//   INTEREST_ACCOUNT_TYPE: process.env.INTEREST_ACCOUNT_TYPE || "savings",
-//   INTEREST_CALCULATION_PERIOD:
-//     process.env.INTEREST_CALCULATION_PERIOD || "monthly",
-// };
+module.exports = {
+    // VAT Rate (ኢትዮጵያ 15%)
+    VAT_RATE: parseFloat(process.env.VAT_RATE) || 0.15,
+    
+    // የVAT መለያ አካውንት (ለመንግስት)
+    VAT_ACCOUNT_ID: parseInt(process.env.VAT_ACCOUNT_ID) || 999,
+    
+    // የተጠቃሚ አይነቶች
+    USER_TYPES: {
+        CUSTOMER: 'customer',
+        ADMIN: 'admin',
+        VAT_COLLECTOR: 'vat_collector'
+    },
+    
+    // የግብይት ገደቦች
+    MAX_TRANSFER_AMOUNT: parseFloat(process.env.MAX_TRANSFER_AMOUNT) || 1000000,
+    MIN_TRANSFER_AMOUNT: parseFloat(process.env.MIN_TRANSFER_AMOUNT) || 1
+};

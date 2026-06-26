@@ -24,7 +24,9 @@ const pool = mysql.createPool({
 
 console.log('✅ Database pool created with database:', DB_NAME);
 
-// የግንኙነት ፈተሻ
+// ============================================
+// Test Connection
+// ============================================
 async function testConnection() {
     try {
         const connection = await pool.getConnection();
@@ -37,13 +39,18 @@ async function testConnection() {
     }
 }
 
-// ሰንጠረዦችን መፍጠር
+// ============================================
+// Create All Tables
+// ============================================
 async function createTables() {
     let connection;
     try {
         connection = await pool.getConnection();
         console.log('✅ Connected to database');
 
+        // ============================================
+        // 1. users table (with status and profile_image)
+        // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -53,12 +60,17 @@ async function createTables() {
                 phone VARCHAR(20),
                 address TEXT,
                 role ENUM('customer', 'admin') DEFAULT 'customer',
+                status ENUM('active', 'inactive') DEFAULT 'active',
+                profile_image TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         `);
         console.log('✅ "users" table created');
 
+        // ============================================
+        // 2. accounts table
+        // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS accounts (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -75,6 +87,9 @@ async function createTables() {
         `);
         console.log('✅ "accounts" table created');
 
+        // ============================================
+        // 3. transactions table
+        // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS transactions (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -90,6 +105,9 @@ async function createTables() {
         `);
         console.log('✅ "transactions" table created');
 
+        // ============================================
+        // 4. transfers table
+        // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS transfers (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -105,6 +123,9 @@ async function createTables() {
         `);
         console.log('✅ "transfers" table created');
 
+        // ============================================
+        // 5. audit_logs table
+        // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS audit_logs (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -118,6 +139,69 @@ async function createTables() {
         `);
         console.log('✅ "audit_logs" table created');
 
+        // ============================================
+        // 6. notifications table
+        // ============================================
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
+                is_read BOOLEAN DEFAULT 0,
+                link VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        console.log('✅ "notifications" table created');
+
+        // ============================================
+        // 7. settings table
+        // ============================================
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                interest_rate DECIMAL(5,2) DEFAULT 5.00,
+                currency VARCHAR(10) DEFAULT 'ETB',
+                transaction_limit DECIMAL(15,2) DEFAULT 100000,
+                maintenance_mode BOOLEAN DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ "settings" table created');
+
+        // ============================================
+        // 8. Insert default settings if empty
+        // ============================================
+        const [settings] = await connection.query('SELECT * FROM settings');
+        if (settings.length === 0) {
+            await connection.query(`
+                INSERT INTO settings (interest_rate, currency, transaction_limit, maintenance_mode)
+                VALUES (5.00, 'ETB', 100000, 0)
+            `);
+            console.log('✅ Default settings inserted');
+        }
+
+        // ============================================
+        // 9. Create default admin user if not exists
+        // ============================================
+        const [adminUsers] = await connection.query(`
+            SELECT * FROM users WHERE email = 'admin@example.com'
+        `);
+        if (adminUsers.length === 0) {
+            const bcrypt = require('bcryptjs');
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash('admin123', salt);
+            
+            await connection.query(`
+                INSERT INTO users (full_name, email, password_hash, role, status)
+                VALUES ('Admin User', 'admin@example.com', ?, 'admin', 'active')
+            `, [hashedPassword]);
+            console.log('✅ Default admin user created (admin@example.com / admin123)');
+        }
+
         console.log('🎉 All tables created successfully!');
 
     } catch (error) {
@@ -128,7 +212,9 @@ async function createTables() {
     }
 }
 
-// ሁሉንም አስጀምር
+// ============================================
+// Initialize Database
+// ============================================
 async function initializeDatabase() {
     const connected = await testConnection();
     if (connected) {
@@ -137,10 +223,12 @@ async function initializeDatabase() {
     }
 }
 
-// መጀመሪያ ላይ አስጀምር
+// Run initialization
 initializeDatabase();
 
-// ⭐ pool ን ኤክስፖርት አድርግ
+// ============================================
+// Export
+// ============================================
 module.exports = {
     pool: pool,
     testConnection,

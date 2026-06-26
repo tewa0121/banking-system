@@ -1,0 +1,124 @@
+/* ============================================
+   Dark Mode Styles
+   ============================================ */
+
+.dark-mode {
+    background-color: #1a1a2e;
+    color: #ffffff;
+}
+
+.dark-mode .App {
+    background-color: #1a1a2e;
+}
+
+/* Dark Mode Cards */
+.dark-mode .card,
+.dark-mode .statCard,
+.dark-mode .tableContainer,
+.dark-mode .card-container {
+    background-color: #16213e !important;
+    color: #ffffff !important;
+    border: 1px solid #2a3a5e !important;
+}
+
+/* Dark Mode Navbar */
+.dark-mode nav {
+    background-color: #0f0f23 !important;
+}
+
+.dark-mode nav a {
+    color: #ffffff !important;
+}
+
+/* Dark Mode Inputs */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+    background-color: #0f0f23 !important;
+    color: #ffffff !important;
+    border-color: #2a3a5e !important;
+}
+
+.dark-mode input:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus {
+    border-color: #4a6a9e !important;
+    outline: none !important;
+}
+
+/* Dark Mode Tables */
+.dark-mode table {
+    background-color: #16213e !important;
+    color: #ffffff !important;
+}
+
+.dark-mode table thead {
+    background-color: #0f0f23 !important;
+}
+
+.dark-mode table tbody tr:hover {
+    background-color: #1a2a4e !important;
+}
+
+/* Dark Mode Buttons */
+.dark-mode .btn-primary {
+    background-color: #2a4a7e !important;
+}
+
+.dark-mode .btn-primary:hover {
+    background-color: #3a5a9e !important;
+}
+
+/* Dark Mode Links */
+.dark-mode a:not(.navbar-link) {
+    color: #6a9ad6 !important;
+}
+
+/* Dark Mode Logout Button */
+.dark-mode .logoutBtn {
+    background-color: #4a1a2a !important;
+}
+
+/* Dark Mode Placeholder */
+.dark-mode input::placeholder {
+    color: #8888aa !important;
+}
+
+/* Dark Mode Select Options */
+.dark-mode select option {
+    background-color: #16213e !important;
+    color: #ffffff !important;
+}
+
+/* Dark Mode Badges */
+.dark-mode .badge-success {
+    background-color: #1a4a2a !important;
+    color: #8aeeaa !important;
+}
+
+.dark-mode .badge-danger {
+    background-color: #4a1a1a !important;
+    color: #ee8a8a !important;
+}
+
+.dark-mode .badge-warning {
+    background-color: #4a3a1a !important;
+    color: #eedd8a !important;
+}
+
+/* Dark Mode Action Buttons */
+.dark-mode .deactivateBtn {
+    background-color: #4a1a1a !important;
+    color: #ee8a8a !important;
+}
+
+.dark-mode .activateBtn {
+    background-color: #1a4a2a !important;
+    color: #8aeeaa !important;
+}
+
+/* Dark Mode Footer */
+.dark-mode footer {
+    background-color: #0f0f23 !important;
+    color: #8888aa !important;
+}

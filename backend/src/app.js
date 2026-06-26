@@ -17,7 +17,8 @@ const interestRoutes = require('./routes/interestRoutes');
 const languageRoutes = require('./routes/languageRoutes');
 const bankRoutes = require('./routes/bankRoutes');
 const settingsRoutes = require('./routes/settingsRoutes'); // ⭐ አክል
-
+const notificationRoutes = require('./routes/notificationRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -72,6 +73,8 @@ app.use('/api/interest', interestRoutes);
 app.use('/api/languages', languageRoutes);
 app.use('/api/banks', bankRoutes);
 app.use('/api/settings', settingsRoutes); // ⭐ አክል
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/search', searchRoutes);
 
 app.use(errorHandler);
 
