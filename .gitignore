@@ -20,4 +20,9 @@ Thumbs.db
 # Logs
 logs/
 *.log
-npm-debug.log*
+npm-debug.log*backend/nul
+*.nul
+backend/nul
+nul
+*.nul
+backend/nul

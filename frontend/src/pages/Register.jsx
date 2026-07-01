@@ -5,6 +5,7 @@ import api from '../api/axiosConfig';
 
 function Register() {
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         full_name: '',
         email: '',
@@ -13,47 +14,11 @@ function Register() {
         phone: '',
         address: ''
     });
-    const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
-    // ⭐ ኢሜይል ማረጋገጫ - @gmail.com ብቻ
     const validateEmail = (email) => {
-        if (!email) return false;
-        
-        // ትክክለኛ የኢሜይል ቅርጸት መሆኑን ፈትሽ
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return false;
-        }
-        
-        // ⭐ @gmail.com መሆኑን ፈትሽ
-        if (!email.endsWith('@gmail.com')) {
-            return false;
-        }
-        
-        return true;
-    };
-
-    // ⭐ የይለፍ ቃል ማረጋገጫ
-    const validatePassword = (password) => {
-        if (password.length < 6) {
-            return 'Password must be at least 6 characters';
-        }
-        
-        const letterNumberRegex = /^[A-Za-z0-9]+$/;
-        if (!letterNumberRegex.test(password)) {
-            return 'Password must contain only letters and numbers';
-        }
-        
-        if (!/[A-Za-z]/.test(password)) {
-            return 'Password must contain at least one letter';
-        }
-        
-        if (!/[0-9]/.test(password)) {
-            return 'Password must contain at least one number';
-        }
-        
-        return null;
+        // ⭐ Gmail ብቻ እንዲቀበል
+        return email.endsWith('@gmail.com');
     };
 
     const handleChange = (e) => {
@@ -62,7 +27,6 @@ function Register() {
             ...formData,
             [name]: value
         });
-        
         if (errors[name]) {
             setErrors({
                 ...errors,
@@ -74,27 +38,23 @@ function Register() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // ⭐ ማረጋገጫ
         const newErrors = {};
         
         if (!formData.full_name) {
             newErrors.full_name = 'Full name is required';
-        } else if (formData.full_name.length < 2) {
-            newErrors.full_name = 'Full name must be at least 2 characters';
         }
         
         if (!formData.email) {
             newErrors.email = 'Email is required';
         } else if (!validateEmail(formData.email)) {
-            newErrors.email = 'Please use a valid Gmail address (e.g., name@gmail.com)';
+            newErrors.email = 'Only Gmail addresses are allowed (e.g., name@gmail.com)';
         }
         
         if (!formData.password) {
             newErrors.password = 'Password is required';
-        } else {
-            const passwordError = validatePassword(formData.password);
-            if (passwordError) {
-                newErrors.password = passwordError;
-            }
+        } else if (formData.password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters';
         }
         
         if (formData.password !== formData.confirmPassword) {
@@ -103,6 +63,7 @@ function Register() {
         
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
+            toast.error('Please fix the errors');
             return;
         }
 
@@ -113,22 +74,27 @@ function Register() {
                 full_name: formData.full_name,
                 email: formData.email,
                 password: formData.password,
-                phone: formData.phone,
-                address: formData.address
+                phone: formData.phone || '',
+                address: formData.address || ''
             });
-            
+
+            console.log('📥 Register response:', response.data);
+
             if (response.data.success) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
-                toast.success('Registration successful!');
-                navigate('/dashboard');
+                toast.success('Account created successfully! Please login.');
+                navigate('/login');
+            } else {
+                toast.error(response.data.message || 'Registration failed');
             }
         } catch (error) {
-            // ⭐ ድጋሜ ኢሜል ከሆነ
-            if (error.response?.data?.message === 'Email already registered') {
-                toast.error('This email is already registered. Please use a different email.');
+            console.error('❌ Register error:', error);
+            
+            if (error.response?.status === 400) {
+                toast.error(error.response.data.message || 'Invalid data');
+            } else if (error.response?.data?.message) {
+                toast.error(error.response.data.message);
             } else {
-                toast.error(error.response?.data?.message || 'Registration failed');
+                toast.error('Registration failed. Please try again.');
             }
         } finally {
             setLoading(false);
@@ -138,10 +104,15 @@ function Register() {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <h2 style={styles.title}>Register</h2>
+                <div style={styles.logo}>
+                    <span style={styles.logoIcon}>🏦</span>
+                    <h2 style={styles.title}>Create Account</h2>
+                </div>
+                <p style={styles.subtitle}>Register to start banking</p>
+                
                 <form onSubmit={handleSubmit} style={styles.form}>
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Full Name</label>
+                        <label style={styles.label}>Full Name *</label>
                         <input
                             type="text"
                             name="full_name"
@@ -152,7 +123,7 @@ function Register() {
                                 borderColor: errors.full_name ? '#dc3545' : '#ddd'
                             }}
                             placeholder="Enter your full name"
-                            required
+                            disabled={loading}
                         />
                         {errors.full_name && (
                             <span style={styles.errorText}>{errors.full_name}</span>
@@ -160,7 +131,7 @@ function Register() {
                     </div>
                     
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Email</label>
+                        <label style={styles.label}>Email Address *</label>
                         <input
                             type="email"
                             name="email"
@@ -170,17 +141,16 @@ function Register() {
                                 ...styles.input,
                                 borderColor: errors.email ? '#dc3545' : '#ddd'
                             }}
-                            placeholder="Enter your Gmail (name@gmail.com)"
-                            required
+                            placeholder="name@gmail.com"
+                            disabled={loading}
                         />
                         {errors.email && (
                             <span style={styles.errorText}>{errors.email}</span>
                         )}
-                        <span style={styles.hint}>Only Gmail addresses are accepted</span>
                     </div>
                     
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Password</label>
+                        <label style={styles.label}>Password *</label>
                         <input
                             type="password"
                             name="password"
@@ -190,8 +160,8 @@ function Register() {
                                 ...styles.input,
                                 borderColor: errors.password ? '#dc3545' : '#ddd'
                             }}
-                            placeholder="Letters and numbers only (min 6)"
-                            required
+                            placeholder="Min 6 characters"
+                            disabled={loading}
                         />
                         {errors.password && (
                             <span style={styles.errorText}>{errors.password}</span>
@@ -199,7 +169,7 @@ function Register() {
                     </div>
                     
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Confirm Password</label>
+                        <label style={styles.label}>Confirm Password *</label>
                         <input
                             type="password"
                             name="confirmPassword"
@@ -210,7 +180,7 @@ function Register() {
                                 borderColor: errors.confirmPassword ? '#dc3545' : '#ddd'
                             }}
                             placeholder="Confirm your password"
-                            required
+                            disabled={loading}
                         />
                         {errors.confirmPassword && (
                             <span style={styles.errorText}>{errors.confirmPassword}</span>
@@ -218,19 +188,20 @@ function Register() {
                     </div>
                     
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Phone (Optional)</label>
+                        <label style={styles.label}>Phone Number</label>
                         <input
-                            type="text"
+                            type="tel"
                             name="phone"
                             value={formData.phone}
                             onChange={handleChange}
                             style={styles.input}
                             placeholder="Enter your phone number"
+                            disabled={loading}
                         />
                     </div>
                     
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Address (Optional)</label>
+                        <label style={styles.label}>Address</label>
                         <input
                             type="text"
                             name="address"
@@ -238,13 +209,26 @@ function Register() {
                             onChange={handleChange}
                             style={styles.input}
                             placeholder="Enter your address"
+                            disabled={loading}
                         />
                     </div>
                     
-                    <button type="submit" style={styles.button} disabled={loading}>
-                        {loading ? 'Loading...' : 'Register'}
+                    <button 
+                        type="submit" 
+                        style={loading ? styles.buttonDisabled : styles.button} 
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <span style={styles.buttonContent}>
+                                <span style={styles.buttonSpinner}></span>
+                                Creating Account...
+                            </span>
+                        ) : (
+                            'Create Account'
+                        )}
                     </button>
                 </form>
+                
                 <p style={styles.linkText}>
                     Already have an account? <Link to="/login" style={styles.link}>Login</Link>
                 </p>
@@ -259,72 +243,142 @@ const styles = {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: '#f5f5f5'
+        backgroundColor: '#f0f4f8',
+        padding: '20px'
     },
     card: {
         backgroundColor: 'white',
-        padding: '40px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        padding: '40px 35px',
+        borderRadius: '16px',
+        boxShadow: '0 4px 30px rgba(0,0,0,0.08)',
         width: '100%',
         maxWidth: '450px'
     },
+    logo: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+        marginBottom: '4px'
+    },
+    logoIcon: {
+        fontSize: '32px'
+    },
     title: {
+        fontSize: '26px',
+        color: '#2d3748',
+        margin: 0,
+        fontWeight: '700'
+    },
+    subtitle: {
+        fontSize: '14px',
+        color: '#718096',
         textAlign: 'center',
-        marginBottom: '30px',
-        color: '#333'
+        marginBottom: '28px',
+        marginTop: '4px'
     },
     form: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '15px'
+        gap: '14px'
     },
     inputGroup: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '5px'
+        gap: '4px'
     },
     label: {
         fontSize: '14px',
-        fontWeight: '500',
-        color: '#555'
+        fontWeight: '600',
+        color: '#4a5568'
     },
     input: {
-        padding: '10px',
-        border: '1px solid #ddd',
-        borderRadius: '4px',
-        fontSize: '16px',
-        transition: 'border-color 0.3s'
+        padding: '12px 14px',
+        border: '2px solid #e2e8f0',
+        borderRadius: '8px',
+        fontSize: '15px',
+        transition: 'all 0.3s ease',
+        outline: 'none',
+        backgroundColor: 'white',
+        color: '#2d3748',
+        width: '100%',
+        boxSizing: 'border-box'
     },
     button: {
-        padding: '12px',
-        backgroundColor: '#1976d2',
+        padding: '14px 24px',
+        backgroundColor: '#38a169',
         color: 'white',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '8px',
         fontSize: '16px',
+        fontWeight: '600',
         cursor: 'pointer',
+        transition: 'all 0.3s ease',
         marginTop: '10px'
+    },
+    buttonDisabled: {
+        padding: '14px 24px',
+        backgroundColor: '#a0aec0',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: '600',
+        cursor: 'not-allowed',
+        marginTop: '10px'
+    },
+    buttonContent: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px'
+    },
+    buttonSpinner: {
+        border: '2px solid rgba(255,255,255,0.3)',
+        borderTop: '2px solid white',
+        borderRadius: '50%',
+        width: '18px',
+        height: '18px',
+        animation: 'spin 0.8s linear infinite',
+        display: 'inline-block'
     },
     linkText: {
         textAlign: 'center',
         marginTop: '20px',
-        color: '#666'
+        fontSize: '14px',
+        color: '#4a5568'
     },
     link: {
-        color: '#1976d2',
-        textDecoration: 'none'
+        color: '#4299e1',
+        textDecoration: 'none',
+        fontWeight: '500'
     },
     errorText: {
         color: '#dc3545',
         fontSize: '13px',
         marginTop: '3px'
-    },
-    hint: {
-        color: '#888',
-        fontSize: '12px',
-        marginTop: '3px'
     }
 };
+
+// Add keyframe animation
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    input:focus {
+        border-color: #4299e1 !important;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15) !important;
+    }
+    
+    button:hover:not(:disabled) {
+        background-color: #2f855a !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+    }
+`;
+document.head.appendChild(styleSheet);
 
 export default Register;

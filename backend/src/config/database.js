@@ -13,7 +13,6 @@ const dbConfig = {
 
 const DB_NAME = process.env.DB_NAME || 'banking_db';
 
-// ⭐ ፑልን በቀጥታ ፍጠር እና ኤክስፖርት አድርግ
 const pool = mysql.createPool({
     ...dbConfig,
     database: DB_NAME,
@@ -24,9 +23,6 @@ const pool = mysql.createPool({
 
 console.log('✅ Database pool created with database:', DB_NAME);
 
-// ============================================
-// Test Connection
-// ============================================
 async function testConnection() {
     try {
         const connection = await pool.getConnection();
@@ -39,9 +35,6 @@ async function testConnection() {
     }
 }
 
-// ============================================
-// Create All Tables
-// ============================================
 async function createTables() {
     let connection;
     try {
@@ -49,7 +42,7 @@ async function createTables() {
         console.log('✅ Connected to database');
 
         // ============================================
-        // 1. users table (with status and profile_image)
+        // 1. users table (All bank staff roles)
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS users (
@@ -59,54 +52,80 @@ async function createTables() {
                 password_hash VARCHAR(255) NOT NULL,
                 phone VARCHAR(20),
                 address TEXT,
-                role ENUM('customer', 'admin') DEFAULT 'customer',
-                status ENUM('active', 'inactive') DEFAULT 'active',
+                role ENUM('admin', 'teller', 'accountant', 'auditor', 'customer') DEFAULT 'customer',
+                status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
                 profile_image TEXT,
+                last_login TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ "users" table created');
+        console.log('✅ "users" table created with all bank staff roles');
 
         // ============================================
-        // 2. accounts table
+        // 2. branches table
+        // ============================================
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS branches (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                branch_name VARCHAR(100) NOT NULL,
+                branch_code VARCHAR(20) UNIQUE NOT NULL,
+                address TEXT,
+                phone VARCHAR(20),
+                manager_id INT,
+                status ENUM('active', 'inactive') DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+        `);
+        console.log('✅ "branches" table created');
+
+        // ============================================
+        // 3. accounts table
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS accounts (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 user_id INT NOT NULL,
                 account_number VARCHAR(20) UNIQUE NOT NULL,
-                account_type ENUM('savings', 'checking', 'fixed') DEFAULT 'savings',
+                account_type ENUM('savings', 'checking', 'fixed', 'business') DEFAULT 'savings',
                 balance DECIMAL(15,2) DEFAULT 0.00,
                 currency VARCHAR(3) DEFAULT 'ETB',
-                status ENUM('active', 'inactive', 'closed') DEFAULT 'active',
+                branch_id INT,
+                status ENUM('active', 'inactive', 'closed', 'frozen') DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
             )
         `);
         console.log('✅ "accounts" table created');
 
         // ============================================
-        // 3. transactions table
+        // 4. transactions table
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS transactions (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 account_id INT NOT NULL,
-                transaction_type ENUM('deposit', 'withdraw', 'transfer', 'payment') NOT NULL,
+                transaction_type ENUM('deposit', 'withdraw', 'transfer', 'payment', 'fee') NOT NULL,
                 amount DECIMAL(15,2) NOT NULL,
                 description TEXT,
                 reference_number VARCHAR(50) UNIQUE,
                 status ENUM('pending', 'completed', 'failed', 'reversed') DEFAULT 'pending',
+                performed_by INT,
+                branch_id INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                FOREIGN KEY (performed_by) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
             )
         `);
         console.log('✅ "transactions" table created');
 
         // ============================================
-        // 4. transfers table
+        // 5. transfers table
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS transfers (
@@ -124,7 +143,7 @@ async function createTables() {
         console.log('✅ "transfers" table created');
 
         // ============================================
-        // 5. audit_logs table
+        // 6. audit_logs table
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS audit_logs (
@@ -140,7 +159,7 @@ async function createTables() {
         console.log('✅ "audit_logs" table created');
 
         // ============================================
-        // 6. notifications table
+        // 7. notifications table
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS notifications (
@@ -158,7 +177,7 @@ async function createTables() {
         console.log('✅ "notifications" table created');
 
         // ============================================
-        // 7. settings table
+        // 8. settings table
         // ============================================
         await connection.query(`
             CREATE TABLE IF NOT EXISTS settings (
@@ -167,54 +186,117 @@ async function createTables() {
                 currency VARCHAR(10) DEFAULT 'ETB',
                 transaction_limit DECIMAL(15,2) DEFAULT 100000,
                 maintenance_mode BOOLEAN DEFAULT 0,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                withdrawal_fee DECIMAL(5,2) DEFAULT 0.00,
+                transfer_fee DECIMAL(5,2) DEFAULT 0.00,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                updated_by INT,
+                FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
             )
         `);
         console.log('✅ "settings" table created');
 
         // ============================================
-        // 8. Insert default settings if empty
+        // 9. Insert default settings
         // ============================================
         const [settings] = await connection.query('SELECT * FROM settings');
         if (settings.length === 0) {
             await connection.query(`
-                INSERT INTO settings (interest_rate, currency, transaction_limit, maintenance_mode)
-                VALUES (5.00, 'ETB', 100000, 0)
+                INSERT INTO settings (interest_rate, currency, transaction_limit, maintenance_mode, withdrawal_fee, transfer_fee)
+                VALUES (5.00, 'ETB', 100000, 0, 0.00, 0.00)
             `);
             console.log('✅ Default settings inserted');
         }
 
         // ============================================
-        // 9. Create default admin user if not exists
+        // 10. Insert default branches
         // ============================================
-        const [adminUsers] = await connection.query(`
-            SELECT * FROM users WHERE email = 'admin@example.com'
-        `);
-        if (adminUsers.length === 0) {
-            const bcrypt = require('bcryptjs');
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash('admin123', salt);
-            
+        const [branches] = await connection.query('SELECT * FROM branches');
+        if (branches.length === 0) {
             await connection.query(`
-                INSERT INTO users (full_name, email, password_hash, role, status)
-                VALUES ('Admin User', 'admin@example.com', ?, 'admin', 'active')
-            `, [hashedPassword]);
-            console.log('✅ Default admin user created (admin@example.com / admin123)');
+                INSERT INTO branches (branch_name, branch_code, address) VALUES
+                ('Head Office', 'HO001', 'Addis Ababa, Ethiopia'),
+                ('Bole Branch', 'BR002', 'Bole, Addis Ababa'),
+                ('Piazza Branch', 'BR003', 'Piazza, Addis Ababa'),
+                ('Megenagna Branch', 'BR004', 'Megenagna, Addis Ababa')
+            `);
+            console.log('✅ Default branches inserted');
         }
 
-        console.log('🎉 All tables created successfully!');
+        // ============================================
+        // 11. Create Default Users (All Roles)
+        // ============================================
+        const bcrypt = require('bcryptjs');
+        const salt = await bcrypt.genSalt(10);
+
+        const defaultUsers = [
+            {
+                full_name: 'Admin User',
+                email: 'admin@gmail.com',
+                password: 'admin123',
+                role: 'admin',
+                status: 'active'
+            },
+            {
+                full_name: 'Teller User',
+                email: 'teller@gmail.com',
+                password: 'teller123',
+                role: 'teller',
+                status: 'active'
+            },
+            {
+                full_name: 'Accountant User',
+                email: 'accountant@gmail.com',
+                password: 'accountant123',
+                role: 'accountant',
+                status: 'active'
+            },
+            {
+                full_name: 'Auditor User',
+                email: 'auditor@gmail.com',
+                password: 'auditor123',
+                role: 'auditor',
+                status: 'active'
+            },
+            {
+                full_name: 'Customer User',
+                email: 'customer@gmail.com',
+                password: 'customer123',
+                role: 'customer',
+                status: 'active'
+            }
+        ];
+
+        for (const userData of defaultUsers) {
+            const [existing] = await connection.query(
+                'SELECT * FROM users WHERE email = ?',
+                [userData.email]
+            );
+            
+            if (existing.length === 0) {
+                const hashedPassword = await bcrypt.hash(userData.password, salt);
+                await connection.query(`
+                    INSERT INTO users (full_name, email, password_hash, role, status)
+                    VALUES (?, ?, ?, ?, ?)
+                `, [userData.full_name, userData.email, hashedPassword, userData.role, userData.status]);
+                console.log(`✅ Default ${userData.role} user created (${userData.email} / ${userData.password})`);
+            } else {
+                console.log(`ℹ️ ${userData.role} user already exists (${userData.email})`);
+            }
+        }
+
+        console.log('🎉 All tables verified/created successfully!');
 
     } catch (error) {
         console.error('❌ Error creating tables:', error.message);
+        if (error.sql) {
+            console.error('❌ SQL Query:', error.sql);
+        }
         throw error;
     } finally {
         if (connection) connection.release();
     }
 }
 
-// ============================================
-// Initialize Database
-// ============================================
 async function initializeDatabase() {
     const connected = await testConnection();
     if (connected) {
@@ -223,12 +305,8 @@ async function initializeDatabase() {
     }
 }
 
-// Run initialization
 initializeDatabase();
 
-// ============================================
-// Export
-// ============================================
 module.exports = {
     pool: pool,
     testConnection,
