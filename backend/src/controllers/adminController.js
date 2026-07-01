@@ -1,14 +1,71 @@
-const { User, Account, Transaction } = require('../models');
-const { createNotification } = require('./notificationController');
+const { pool } = require('../config/database');
+const bcrypt = require('bcryptjs');
+
+// ============================================
+// Dashboard Statistics
+// ============================================
+exports.getDashboardStats = async (req, res) => {
+    try {
+        const [userCount] = await pool.query('SELECT COUNT(*) as total FROM users');
+        const [activeUsers] = await pool.query("SELECT COUNT(*) as total FROM users WHERE status = 'active'");
+        const [accountCount] = await pool.query('SELECT COUNT(*) as total FROM accounts');
+        const [transactionCount] = await pool.query('SELECT COUNT(*) as total FROM transactions');
+        const [totalBalance] = await pool.query('SELECT SUM(balance) as total FROM accounts');
+        const [todayTransactions] = await pool.query(
+            'SELECT COUNT(*) as total FROM transactions WHERE DATE(created_at) = CURDATE()'
+        );
+        
+        // በሚና የተጠቃሚዎች ብዛት
+        const [roleCounts] = await pool.query(`
+            SELECT role, COUNT(*) as count 
+            FROM users 
+            GROUP BY role
+        `);
+        
+        const roles = {};
+        roleCounts.forEach(r => { roles[r.role] = r.count; });
+        
+        res.json({
+            success: true,
+            data: {
+                users: {
+                    total: userCount[0].total,
+                    active: activeUsers[0].total,
+                    byRole: roles
+                },
+                accounts: {
+                    total: accountCount[0].total
+                },
+                transactions: {
+                    total: transactionCount[0].total,
+                    today: todayTransactions[0].total
+                },
+                totalBalance: totalBalance[0].total || 0
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get dashboard stats',
+            error: error.message
+        });
+    }
+};
 
 // ============================================
 // Get All Users
 // ============================================
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.findAll();
+        const [users] = await pool.query(`
+            SELECT id, full_name, email, phone, address, role, status, 
+                    profile_image, created_at, last_login 
+            FROM users 
+            ORDER BY created_at DESC
+        `);
         
-        res.status(200).json({
+        res.json({
             success: true,
             count: users.length,
             data: users
@@ -29,22 +86,33 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
     try {
         const { id } = req.params;
-        const user = await User.findById(id);
         
-        if (!user) {
+        const [users] = await pool.query(`
+            SELECT id, full_name, email, phone, address, role, status, 
+                    profile_image, created_at, last_login 
+            FROM users 
+            WHERE id = ?
+        `, [id]);
+        
+        if (users.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found'
             });
         }
         
-        const account = await Account.findByUserId(id);
+        // የተጠቃሚውን አካውንቶች ማየት
+        const [accounts] = await pool.query(`
+            SELECT id, account_number, account_type, balance, currency, status 
+            FROM accounts 
+            WHERE user_id = ?
+        `, [id]);
         
-        res.status(200).json({
+        res.json({
             success: true,
             data: {
-                user,
-                account
+                ...users[0],
+                accounts
             }
         });
     } catch (error) {
@@ -58,13 +126,147 @@ exports.getUserById = async (req, res) => {
 };
 
 // ============================================
+// Update User Role
+// ============================================
+exports.updateUserRole = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+        
+        const validRoles = ['customer', 'teller', 'accountant', 'auditor', 'admin'];
+        
+        if (!validRoles.includes(role)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid role. Valid roles: ${validRoles.join(', ')}`
+            });
+        }
+        
+        const [result] = await pool.query(
+            'UPDATE users SET role = ? WHERE id = ?',
+            [role, id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // የለውጥ መዝገብ አስቀምጥ
+        await pool.query(
+            `INSERT INTO audit_logs (user_id, action, details, ip_address) 
+             VALUES (?, 'role_update', ?, ?)`,
+            [req.user.id, `Changed role to ${role} for user ${id}`, req.ip]
+        );
+        
+        const [user] = await pool.query(
+            'SELECT id, full_name, email, role, status FROM users WHERE id = ?',
+            [id]
+        );
+        
+        res.json({
+            success: true,
+            message: `User role updated to ${role}`,
+            data: user[0]
+        });
+    } catch (error) {
+        console.error('Update user role error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update user role',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// Update User Status
+// ============================================
+exports.updateUserStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        const validStatuses = ['active', 'inactive', 'suspended'];
+        
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid status. Valid statuses: ${validStatuses.join(', ')}`
+            });
+        }
+        
+        const [result] = await pool.query(
+            'UPDATE users SET status = ? WHERE id = ?',
+            [status, id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // የለውጥ መዝገብ አስቀምጥ
+        await pool.query(
+            `INSERT INTO audit_logs (user_id, action, details, ip_address) 
+             VALUES (?, 'status_update', ?, ?)`,
+            [req.user.id, `Changed status to ${status} for user ${id}`, req.ip]
+        );
+        
+        // ማሳወቂያ ፍጠር
+        const message = status === 'active' 
+            ? 'Your account has been activated. You can now login and use all banking services.'
+            : status === 'suspended'
+            ? 'Your account has been suspended. Please contact admin for more information.'
+            : 'Your account has been deactivated. Please contact admin for more information.';
+        
+        await pool.query(
+            `INSERT INTO notifications (user_id, title, message, type) 
+             VALUES (?, ?, ?, ?)`,
+            [id, 'Account Status Update', message, status === 'active' ? 'success' : 'error']
+        );
+        
+        const [user] = await pool.query(
+            'SELECT id, full_name, email, role, status FROM users WHERE id = ?',
+            [id]
+        );
+        
+        res.json({
+            success: true,
+            message: `User status updated to ${status}`,
+            data: user[0]
+        });
+    } catch (error) {
+        console.error('Update user status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update user status',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
 // Get All Accounts
 // ============================================
 exports.getAllAccounts = async (req, res) => {
     try {
-        const accounts = await Account.findAll();
+        const [accounts] = await pool.query(`
+            SELECT 
+                a.*,
+                u.full_name as customer_name,
+                u.email as customer_email,
+                u.phone as customer_phone
+            FROM accounts a
+            JOIN users u ON a.user_id = u.id
+            ORDER BY a.created_at DESC
+        `);
         
-        res.status(200).json({
+        res.json({
             success: true,
             count: accounts.length,
             data: accounts
@@ -84,21 +286,37 @@ exports.getAllAccounts = async (req, res) => {
 // ============================================
 exports.getAllTransactions = async (req, res) => {
     try {
-        const { limit = 100 } = req.query;
+        const { limit = 100, status, type } = req.query;
         
-        const query = `
-            SELECT t.*, a.account_number, u.full_name, u.email
+        let query = `
+            SELECT 
+                t.*,
+                a.account_number,
+                u.full_name as customer_name,
+                u.email as customer_email
             FROM transactions t
             JOIN accounts a ON t.account_id = a.id
             JOIN users u ON a.user_id = u.id
-            ORDER BY t.created_at DESC
-            LIMIT ?
+            WHERE 1=1
         `;
+        const params = [];
         
-        const { pool } = require('../config/database');
-        const [transactions] = await pool.execute(query, [parseInt(limit)]);
+        if (status) {
+            query += ' AND t.status = ?';
+            params.push(status);
+        }
         
-        res.status(200).json({
+        if (type) {
+            query += ' AND t.transaction_type = ?';
+            params.push(type);
+        }
+        
+        query += ' ORDER BY t.created_at DESC LIMIT ?';
+        params.push(parseInt(limit));
+        
+        const [transactions] = await pool.query(query, params);
+        
+        res.json({
             success: true,
             count: transactions.length,
             data: transactions
@@ -114,146 +332,143 @@ exports.getAllTransactions = async (req, res) => {
 };
 
 // ============================================
-// Update User Role (Make Admin)
+// Create Teller
 // ============================================
-exports.updateUserRole = async (req, res) => {
+exports.createTeller = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { role } = req.body;
+        const { full_name, email, password, phone, address } = req.body;
         
-        if (!['customer', 'admin'].includes(role)) {
+        // ኢሜል ቀድሞ እንደሌለ ማረጋገጥ
+        const [existing] = await pool.query(
+            'SELECT id FROM users WHERE email = ?',
+            [email]
+        );
+        
+        if (existing.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid role. Must be customer or admin'
+                message: 'Email already exists'
             });
         }
         
-        const { pool } = require('../config/database');
-        const query = 'UPDATE users SET role = ? WHERE id = ?';
-        const [result] = await pool.execute(query, [role, id]);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
         
-        if (result.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
+        const [result] = await pool.query(
+            `INSERT INTO users (full_name, email, password_hash, phone, address, role) 
+             VALUES (?, ?, ?, ?, ?, 'teller')`,
+            [full_name, email, hashedPassword, phone, address]
+        );
         
-        const user = await User.findById(id);
+        // የለውጥ መዝገብ አስቀምጥ
+        await pool.query(
+            `INSERT INTO audit_logs (user_id, action, details, ip_address) 
+             VALUES (?, 'create_teller', ?, ?)`,
+            [req.user.id, `Created teller: ${email}`, req.ip]
+        );
         
-        res.status(200).json({
+        res.json({
             success: true,
-            message: `User role updated to ${role}`,
-            data: user
+            message: 'Teller created successfully',
+            data: { id: result.insertId, email, role: 'teller' }
         });
     } catch (error) {
-        console.error('Update user role error:', error);
+        console.error('Create teller error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to update user role',
+            message: 'Failed to create teller',
             error: error.message
         });
     }
 };
 
 // ============================================
-// ⭐ Update User Status (Active/Inactive)
+// Get Audit Logs
 // ============================================
-exports.updateUserStatus = async (req, res) => {
+exports.getAuditLogs = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { status } = req.body;
-
-        console.log('📥 Update user status:', { id, status });
-
-        if (!['active', 'inactive'].includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid status. Must be active or inactive'
-            });
-        }
-
-        const { pool } = require('../config/database');
-        const query = 'UPDATE users SET status = ? WHERE id = ?';
-        const [result] = await pool.execute(query, [status, id]);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        const user = await User.findById(id);
-
-        // ⭐ Create notification for user about status change
-        if (status === 'active') {
-            await createNotification(
-                user.id,
-                '✅ Account Activated',
-                `Your account has been activated. You can now login and use all banking services.`,
-                'success'
-            );
-        } else {
-            await createNotification(
-                user.id,
-                '⛔ Account Deactivated',
-                `Your account has been deactivated. Please contact admin for more information.`,
-                'error'
-            );
-        }
-
-        res.status(200).json({
+        const { limit = 50 } = req.query;
+        
+        const [logs] = await pool.query(`
+            SELECT 
+                al.*,
+                u.full_name as user_name,
+                u.email as user_email
+            FROM audit_logs al
+            LEFT JOIN users u ON al.user_id = u.id
+            ORDER BY al.created_at DESC
+            LIMIT ?
+        `, [parseInt(limit)]);
+        
+        res.json({
             success: true,
-            message: `User status updated to ${status}`,
-            data: user
+            count: logs.length,
+            data: logs
         });
     } catch (error) {
-        console.error('❌ Update user status error:', error);
+        console.error('Get audit logs error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to update user status',
+            message: 'Failed to get audit logs',
             error: error.message
         });
     }
 };
 
 // ============================================
-// Get Dashboard Statistics
+// Get System Settings
 // ============================================
-exports.getDashboardStats = async (req, res) => {
+exports.getSettings = async (req, res) => {
     try {
-        const { pool } = require('../config/database');
+        const [settings] = await pool.query('SELECT * FROM settings WHERE id = 1');
         
-        const [userCount] = await pool.execute('SELECT COUNT(*) as total FROM users');
-        const [accountCount] = await pool.execute('SELECT COUNT(*) as total FROM accounts');
-        const [transactionCount] = await pool.execute('SELECT COUNT(*) as total FROM transactions');
-        const [totalBalance] = await pool.execute('SELECT SUM(balance) as total FROM accounts');
-        
-        const [recentTransactions] = await pool.execute(`
-            SELECT t.*, a.account_number, u.full_name
-            FROM transactions t
-            JOIN accounts a ON t.account_id = a.id
-            JOIN users u ON a.user_id = u.id
-            ORDER BY t.created_at DESC
-            LIMIT 10
-        `);
-        
-        res.status(200).json({
+        res.json({
             success: true,
-            data: {
-                totalUsers: userCount[0].total || 0,
-                totalAccounts: accountCount[0].total || 0,
-                totalTransactions: transactionCount[0].total || 0,
-                totalBalance: totalBalance[0].total || 0,
-                recentTransactions
-            }
+            data: settings[0] || null
         });
     } catch (error) {
-        console.error('Get dashboard stats error:', error);
+        console.error('Get settings error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to get dashboard statistics',
+            message: 'Failed to get settings',
+            error: error.message
+        });
+    }
+};
+
+// ============================================
+// Update System Settings
+// ============================================
+exports.updateSettings = async (req, res) => {
+    try {
+        const { interest_rate, transaction_limit, maintenance_mode, currency } = req.body;
+        
+        await pool.query(
+            `UPDATE settings 
+             SET interest_rate = ?, 
+                 transaction_limit = ?, 
+                 maintenance_mode = ?, 
+                 currency = ? 
+             WHERE id = 1`,
+            [interest_rate, transaction_limit, maintenance_mode || 0, currency || 'ETB']
+        );
+        
+        // የለውጥ መዝገብ አስቀምጥ
+        await pool.query(
+            `INSERT INTO audit_logs (user_id, action, details, ip_address) 
+             VALUES (?, 'update_settings', ?, ?)`,
+            [req.user.id, 'Updated system settings', req.ip]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Settings updated successfully'
+        });
+    } catch (error) {
+        console.error('Update settings error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update settings',
             error: error.message
         });
     }

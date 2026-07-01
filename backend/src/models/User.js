@@ -1,6 +1,4 @@
 const bcrypt = require('bcryptjs');
-
-// ⭐ pool ን ከ database.js አምጣ
 const { pool } = require('../config/database');
 
 class User {
@@ -8,6 +6,9 @@ class User {
         const { full_name, email, password, phone, address, role = 'customer' } = userData;
         
         console.log('📝 Creating user with data:', { full_name, email, phone, address, role });
+        
+        const validRoles = ['customer', 'teller', 'accountant', 'auditor', 'admin'];
+        const userRole = validRoles.includes(role) ? role : 'customer';
         
         try {
             const salt = await bcrypt.genSalt(10);
@@ -19,13 +20,13 @@ class User {
             `;
             
             console.log('🔍 SQL:', query);
+            console.log('🔍 Values:', [full_name, email, password_hash, phone, address, userRole, 'active']);
             
-            // ⭐ pool ን ተጠቀም - status ን 'active' አድርገን እናስገባለን
             const [result] = await pool.execute(query, [
-                full_name, email, password_hash, phone, address, role, 'active'
+                full_name, email, password_hash, phone, address, userRole, 'active'
             ]);
             
-            console.log('✅ User created with ID:', result.insertId);
+            console.log('✅ User created with ID:', result.insertId, 'Role:', userRole);
             return this.findById(result.insertId);
         } catch (error) {
             console.error('❌ User.create ERROR:', error.message);
@@ -37,8 +38,6 @@ class User {
         try {
             console.log('🔍 Finding user by email:', email);
             const query = 'SELECT * FROM users WHERE email = ?';
-            
-            // ⭐ pool ን ተጠቀም
             const [rows] = await pool.execute(query, [email]);
             console.log('✅ Found user:', rows[0] ? 'Yes' : 'No');
             return rows[0] || null;
@@ -48,7 +47,6 @@ class User {
         }
     }
 
-    // ⭐ findById - ፕሮፋይል ፎቶ እና status ያካትታል
     static async findById(id) {
         try {
             const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users WHERE id = ?';
@@ -64,7 +62,6 @@ class User {
         return await bcrypt.compare(plainPassword, hashedPassword);
     }
 
-    // ⭐ findAll - ፕሮፋይል ፎቶ እና status ያካትታል
     static async findAll() {
         try {
             const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users ORDER BY created_at DESC';
@@ -76,7 +73,6 @@ class User {
         }
     }
 
-    // ⭐ ተጠቃሚዎችን በstatus ማጣራት
     static async findByStatus(status) {
         try {
             const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users WHERE status = ? ORDER BY created_at DESC';
@@ -84,6 +80,17 @@ class User {
             return rows;
         } catch (error) {
             console.error('User.findByStatus error:', error.message);
+            return [];
+        }
+    }
+
+    static async findByRole(role) {
+        try {
+            const query = 'SELECT id, full_name, email, phone, address, role, status, profile_image, created_at FROM users WHERE role = ? ORDER BY created_at DESC';
+            const [rows] = await pool.execute(query, [role]);
+            return rows;
+        } catch (error) {
+            console.error('User.findByRole error:', error.message);
             return [];
         }
     }
